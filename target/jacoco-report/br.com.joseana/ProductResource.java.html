@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProductResource.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">quarkus-application</a> &gt; <a href="index.source.html" class="el_package">br.com.joseana</a> &gt; <span class="el_source">ProductResource.java</span></div><h1>ProductResource.java</h1><pre class="source lang-java linenums">package br.com.joseana;
+
+import java.net.URI;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+
+//tutorial
+// https://github.com/marcuspaulo/quarkus-panache-car
+// https://dev.to/marcuspaulo/simplificando-o-hibernate-utilizando-panache-criando-uma-aplicacao-simples-utilizando-quarkus-java-rest-cdi-panache-14pj
+// https://www.youtube.com/watch?v=kAui1-4KBrk&amp;t=109s&amp;ab_channel=GiuseppeScaramuzzino
+//https://blog.codeleak.pl/2020/02/getting-started-with-quarkus.html 
+// docker run --name product -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=product -p 5433:5432 postgres
+
+import java.util.List;
+
+import io.quarkus.panache.common.Page;
+import jakarta.transaction.Transactional;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+
+
+
+
+@Path(&quot;/product&quot;)
+<span class="fc" id="L34">public class ProductResource {</span>
+
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public List&lt;Product&gt; listAll(@QueryParam(&quot;page&quot;) Integer page, @QueryParam(&quot;pageSize&quot;) Integer pageSize) {
+<span class="pc bpc" id="L40" title="3 of 4 branches missed.">        int defaultPage = (page != null &amp;&amp; page &gt;= 0) ? page : 0;</span>
+<span class="pc bpc" id="L41" title="3 of 4 branches missed.">        int defaultPageSize = (pageSize != null &amp;&amp; pageSize &gt; 0) ? pageSize : 10;</span>
+
+<span class="fc" id="L43">        return Product.findAll().page(defaultPage, defaultPageSize).list();</span>
+    }
+
+    @GET
+    @Path(&quot;/valid&quot;)
+    @Produces(MediaType.APPLICATION_JSON)
+    public List&lt;Product&gt; valid(@QueryParam(&quot;page&quot;) Integer page, @QueryParam(&quot;pageSize&quot;) Integer pageSize) {
+<span class="pc bpc" id="L50" title="3 of 4 branches missed.">        int defaultPage = (page != null &amp;&amp; page &gt;= 0) ? page : 0;</span>
+<span class="pc bpc" id="L51" title="3 of 4 branches missed.">        int defaultPageSize = (pageSize != null &amp;&amp; pageSize &gt; 0) ? pageSize : 10;</span>
+
+<span class="fc" id="L53">        LocalDate today = LocalDate.now();</span>
+<span class="fc" id="L54">        return Product.find(&quot;expiry_date &gt; ?1&quot;, today).page(Page.of(defaultPage, defaultPageSize)).list();</span>
+    }
+
+    @GET
+    @Path(&quot;{id}&quot;)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getById(@PathParam(&quot;id&quot;) Long id) {
+<span class="fc" id="L61">        Product product = Product.findById(id);</span>
+<span class="pc bpc" id="L62" title="1 of 2 branches missed.">        if (product == null) {</span>
+<span class="fc" id="L63">            return Response.status(Response.Status.NO_CONTENT).build();</span>
+        }
+<span class="nc" id="L65">        return Response.ok(product).status(Response.Status.CREATED).build();</span>
+    }
+
+    public boolean isRequiredFieldMissing(Product product) {
+<span class="nc bnc" id="L69" title="All 6 branches missed.">        return product.name == null || product.quantity == 0 || product.expiry_date == null</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">                || product.description == null;</span>
+    }
+
+    @POST
+    @Transactional
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response create(Product product) {
+<span class="nc bnc" id="L77" title="All 2 branches missed.">        if (isRequiredFieldMissing(product)) {</span>
+<span class="nc" id="L78">            return Response.status(Response.Status.BAD_REQUEST)</span>
+<span class="nc" id="L79">                    .entity(&quot;Todos os campos são obrigatórios.&quot;)</span>
+<span class="nc" id="L80">                    .build();</span>
+        }
+        try {
+<span class="nc" id="L83">            LocalDate.parse(product.expiry_date.toString());</span>
+<span class="nc" id="L84">            Product.persist(product);</span>
+<span class="nc" id="L85">            return Response.created(URI.create(&quot;/product/&quot; + product.id)).build();</span>
+
+<span class="nc" id="L87">        } catch (DateTimeParseException e) {</span>
+<span class="nc" id="L88">            return Response.status(Response.Status.BAD_REQUEST)</span>
+<span class="nc" id="L89">                    .entity(&quot;A data deve estar no formato yyyy-MM-dd.&quot;)</span>
+<span class="nc" id="L90">                    .build();</span>
+        }
+    }
+
+    @PUT
+    @Path(&quot;{id}&quot;)
+    @Transactional
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response update(@PathParam(&quot;id&quot;) Long id, Product product) {
+<span class="nc bnc" id="L99" title="All 2 branches missed.">        if (isRequiredFieldMissing(product)) {</span>
+<span class="nc" id="L100">            return Response.status(Response.Status.BAD_REQUEST)</span>
+<span class="nc" id="L101">                    .entity(&quot;Todos os campos são obrigatórios&quot;)</span>
+<span class="nc" id="L102">                    .build();</span>
+        }
+        try {
+<span class="nc" id="L105">            LocalDate.parse(product.expiry_date.toString());</span>
+
+<span class="nc" id="L107">            Product productUpdate = Product.findById(id);</span>
+
+<span class="nc bnc" id="L109" title="All 2 branches missed.">            if (productUpdate == null) {</span>
+<span class="nc" id="L110">                return Response.status(Response.Status.NO_CONTENT).build();</span>
+            }
+
+<span class="nc" id="L113">            productUpdate.name = product.name;</span>
+<span class="nc" id="L114">            productUpdate.quantity = product.quantity;</span>
+<span class="nc" id="L115">            productUpdate.expiry_date = product.expiry_date;</span>
+<span class="nc" id="L116">            productUpdate.description = product.description;</span>
+
+<span class="nc" id="L118">            return Response.ok(productUpdate).build();</span>
+<span class="nc" id="L119">        } catch (DateTimeParseException e) {</span>
+<span class="nc" id="L120">            return Response.status(Response.Status.BAD_REQUEST)</span>
+<span class="nc" id="L121">                    .entity(&quot;A data deve estar no formato yyyy-MM-dd&quot;)</span>
+<span class="nc" id="L122">                    .build();</span>
+        }
+    }
+
+    @DELETE
+    @Path(&quot;{id}&quot;)
+    @Transactional
+    public Response delete(@PathParam(&quot;id&quot;) Long id) {
+<span class="nc" id="L130">        Product product = Product.findById(id);</span>
+<span class="nc" id="L131">        product.delete();</span>
+<span class="nc" id="L132">        return Response.status(Response.Status.NO_CONTENT).build();</span>
+    }
+ 
+
+    
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
